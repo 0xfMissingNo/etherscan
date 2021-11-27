@@ -26,7 +26,7 @@ def to_snake_case(name):
     return name.lower()
 
 
-def __convert(source):
+def _convert(source):
     converted = {}
     for key, value in source.items():
         key = to_snake_case(key)
@@ -145,56 +145,7 @@ class BaseClient:
         }
 
 
-class ProxyClient(BaseClient):
-
-    def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "proxy"
-        }
-
-    def get_gas_price(self):
-        """Get gas price."""
-        self._params["action"] = "eth_gasPrice"
-        return int(self._req(), 16)
-
-    def get_block_number(self):
-        """Get latest block number."""
-        self._params["action"] = "eth_blockNumber"
-        return int(self._req(), 16)
-
-    def get_block_by_number(self, block_number):
-        """Get block by number."""
-        self._params["action"] = "eth_getBlockByNumber"
-        self._params["tag"] = hex(block_number)
-        self._params["boolean"] = True
-        return self._req()
-
-
-class StatsClient(BaseClient):
-    def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "stats"
-        }
-
-    def get_eth_price(self):
-        """Get ETH price."""
-        self._params["action"] = "ethprice"
-        response = self._req()
-        return {
-            "ethbtc": float(response["ethbtc"]),
-            "ethbtc_timestamp": int(response["ethbtc_timestamp"]),
-            "ethusd": float(response["ethusd"]),
-            "ethusd_timestamp": int(response["ethbtc_timestamp"]),
-        }
-
-    def get_eth_supply(self):
-        self._params["action"] = "ethsupply"
-        return int(self._req())
-
-
-class AccountClient(BaseClient):
+class Accounts(BaseClient):
     def _reset_params(self):
         self._params = {
             "apikey": self._api_key,
@@ -248,7 +199,7 @@ class AccountClient(BaseClient):
 
         transactions = []
         for transaction in response:
-            transactions.append(__convert(transaction))
+            transactions.append(_convert(transaction))
 
         return transactions
 
@@ -286,23 +237,255 @@ class AccountClient(BaseClient):
 
         token_transactions = []
         for transaction in response:
-            token_transactions.append(__convert(transaction))
+            token_transactions.append(_convert(transaction))
 
         return token_transactions
+
+
+class Contracts(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "contract"
+        }
+
+    def get_abi(self, address):
+        self._params["action"] = "getabi"
+        self._params["address"] = address
+        return self._req()
+
+    def get_source_code(self, address):
+        self._params["action"] = "getsourcecode"
+        self._params["address"] = address
+        return self._req()
+
+
+class Transactions(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "transaction"
+        }
+
+    def get_tx_receipt_status(self, tx_hash):
+        self._params["action"] = "gettxreceiptstatus"
+        self._params["txhash"] = tx_hash
+        return self._req()
+
+
+class Blocks(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "block"
+        }
+
+    def get_block_countdown(self, block_no):
+        self._params["action"] = "getblockcountdown"
+        self._params["blockno"] = block_no
+        return self._req()
+
+    def get_block_no_by_time(self, timestamp, closest):
+        if closest not in ["before", "after"]:
+            raise ValueError(f"Something went wrong: {closest}")
+        self._params["action"] = "getblocknobytime"
+        self._params["timestamp"] = timestamp
+        self._params["closest"] = closest
+        return self._req()
+
+
+class Logs(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "logs"
+        }
+
+    def get_logs(self, from_block, to_block, address, topic):
+        self._params["action"] = "getlogs"
+        self._params["fromBlock"] = from_block
+        self._params["toBlock"] = to_block
+        self._params["address"] = address
+        self._params["topic0"] = topic
+        return self._req()
+
+
+class GethParityProxy(BaseClient):
+
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "proxy"
+        }
+
+    def get_block_number(self):
+        """Get latest block number."""
+        self._params["action"] = "eth_blockNumber"
+        return int(self._req(), 16)
+
+    def get_block_by_number(self, block_number, boolean=True):
+        """Get block by number."""
+        self._params["action"] = "eth_getBlockByNumber"
+        self._params["tag"] = hex(block_number)
+        self._params["boolean"] = boolean
+        return self._req()
+
+    def get_uncle_by_block_number_and_index(self, block_number):
+        self._params["action"] = "eth_getUncleByBlockNumberAndIndex"
+        self._params["tag"] = hex(block_number)
+        return self._req()
+
+    def get_block_transaction_count_by_number(self, block_number):
+        self._params["action"] = "eth_getBlockTransactionCountByNumber"
+        self._params["tag"] = hex(block_number)
+        return self._req()
+
+    def get_transaction_by_hash(self, tx_hash):
+        self._params["action"] = "eth_getTransactionByHash"
+        self._params["txhash"] = tx_hash
+        return self._req()
+
+    def get_transaction_by_block_number_and_index(self, block_number, index):
+        self._params["action"] = "eth_getTransactionByBlockNumberAndIndex"
+        self._params["tag"] = hex(block_number)
+        self._params["index"] = hex(index)
+        return self._req()
+
+    def get_transaction_count(self, address, tag):
+        if tag not in ["earlist", "pending", "latest"]:
+            raise ValueError(f"Something went wrong: {tag}")
+        self._params["action"] = "eth_getTransactionCount"
+        self._params["address"] = address
+        self._params["tag"] = tag
+        return self._req()
+
+    def send_raw_transaction(self, hex_):
+        self._params["action"] = "eth_sendRawTransaction"
+        self._params["hex"] = hex(hex_)
+        return self._req()
+
+    def get_transaction_receipt(self, tx_hash):
+        self._params["action"] = "eth_getTransactionReceipt"
+        self._params["txhash"] = tx_hash
+        return self._req()
+
+    def call(self, to_, data, tag):
+        if tag not in ["earlist", "pending", "latest"]:
+            raise ValueError(f"Something went wrong: {tag}")
+        self._params["action"] = "eth_call"
+        self._params["to"] = to_
+        self._params["data"] = data
+        self._params["tag"] = tag
+        return self._req()
+
+    def get_code(self, address, tag):
+        if tag not in ["earlist", "pending", "latest"]:
+            raise ValueError(f"Something went wrong: {tag}")
+        self._params["action"] = "eth_getCode"
+        self._params["address"] = address
+        self._params["tag"] = tag
+        return self._req()
+
+    def get_storage_at(self, position, tag):
+        if tag not in ["earlist", "pending", "latest"]:
+            raise ValueError(f"Something went wrong: {tag}")
+        self._params["action"] = "eth_getStorageAt"
+        self._params["position"] = hex(position)
+        self._params["tag"] = tag
+        return self._req()
+
+    def get_gas_price(self):
+        """Get gas price."""
+        self._params["action"] = "eth_gasPrice"
+        return int(self._req(), 16)
+
+    def estimate_gas(self):
+        """Get gas price."""
+        self._params["action"] = "eth_estimateGas"
+        raise NotImplementedError()
+
+
+class Tokens(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "token"
+        }
+
+
+class GasTracker(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "gas"
+        }
+
+
+class Stats(BaseClient):
+    def _reset_params(self):
+        self._params = {
+            "apikey": self._api_key,
+            "module": "stats"
+        }
+
+    def get_eth_price(self):
+        """Get ETH price."""
+        self._params["action"] = "ethprice"
+        response = self._req()
+        return {
+            "ethbtc": float(response["ethbtc"]),
+            "ethbtc_timestamp": int(response["ethbtc_timestamp"]),
+            "ethusd": float(response["ethusd"]),
+            "ethusd_timestamp": int(response["ethbtc_timestamp"]),
+        }
+
+    def get_eth_supply(self):
+        self._params["action"] = "ethsupply"
+        return int(self._req())
 
 
 class Client(BaseClient):
     @property
     @single_excercise
-    def account(self):
-        return AccountClient()
+    def accounts(self):
+        return Accounts()
+
+    @property
+    @single_excercise
+    def contracts(self):
+        return Contracts()
+
+    @property
+    @single_excercise
+    def transactions(self):
+        return Transactions()
+
+    @property
+    @single_excercise
+    def blocks(self):
+        return Blocks()
+
+    @property
+    @single_excercise
+    def logs(self):
+        return Logs()
+
+    @property
+    @single_excercise
+    def geth_parity_proxy(self):
+        return GethParityProxy()
+
+    @property
+    @single_excercise
+    def tokens(self):
+        return Tokens()
+
+    @property
+    @single_excercise
+    def gas_tracker(self):
+        return GasTracker()
 
     @property
     @single_excercise
     def stats(self):
-        return StatsClient()
-
-    @property
-    @single_excercise
-    def proxy(self):
-        return ProxyClient()
+        return Stats()
