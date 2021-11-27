@@ -1,0 +1,22 @@
+missing_calls:
+- tokensupply
+- dailyblockrewards
+- getLogs
+- balancehistory
+- tokeninfo
+- tokenbalance
+- dailyavggasprice
+- getstatus
+- tokensupplyhistory
+- gasestimate
+- tokenbalancehistory
+- gasoracle
+- dailyavgblocksize
+- dailyavggaslimit
+- getminedblocks
+- getblockreward
+- tokennfttx
+- dailyblkcount
+- dailyavgblocktime
+- dailygasused
+- dailyuncleblkcount

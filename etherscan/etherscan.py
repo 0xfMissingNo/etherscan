@@ -173,7 +173,6 @@ class Accounts(BaseClient):
     def get_transactions_by_address(
         self,
         address: str,
-        type_: str = "normal",
         start_block: int = 0,
         end_block: int = 999999999,
         page: int = 1,
@@ -181,13 +180,33 @@ class Accounts(BaseClient):
         sort: str = "asc",
     ):  # pylint: disable=too-many-arguments
         """Get transactions by address."""
-        types = {
-            "normal": "txlist",
-            "internal": "txlistinternal",
-        }
-        if type_ not in types:
-            raise Exception('param `type_` must be "normal" or "internal"')
-        self._params["action"] = types[type_]
+        self._params["action"] = "txlist"
+        self._params["address"] = address
+        self._params["startblock"] = start_block
+        self._params["endblock"] = end_block
+        self._params["page"] = page
+        self._params["offset"] = limit
+        self._params["sort"] = sort
+
+        response = self._req()
+
+        transactions = []
+        for transaction in response:
+            transactions.append(_convert(transaction))
+
+        return transactions
+
+    def get_internal_transactions_by_address(
+        self,
+        address: str,
+        start_block: int = 0,
+        end_block: int = 999999999,
+        page: int = 1,
+        limit: int = 1000,
+        sort: str = "asc",
+    ):  # pylint: disable=too-many-arguments
+        """Get transactions by address."""
+        self._params["action"] = "txlistinternal"
         self._params["address"] = address
         self._params["startblock"] = start_block
         self._params["endblock"] = end_block
