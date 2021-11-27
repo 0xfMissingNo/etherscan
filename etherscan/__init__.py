@@ -1,4 +1,4 @@
 # coding:utf-8
 from .etherscan import *
 
-name = 'etherscan'
+name = 'etherscan' # pylint: disable=invalid-name
