@@ -39,7 +39,7 @@ def _convert(source):
         if value.isdigit():
             converted[key] = int(value)
             continue
-        raise ValueError("something went wrong - key: {key}, value: {value}")
+        converted[key] = value
     return source
 
 
