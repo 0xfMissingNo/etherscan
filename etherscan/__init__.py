@@ -1,9 +1,11 @@
 # coding:utf-8
-from .etherscan import *
-import requests
-from bs4 import BeautifulSoup
 import os
+
+import requests
 import yaml
+from bs4 import BeautifulSoup
+
+from .etherscan import *
 
 name = "etherscan"  # pylint: disable=invalid-name
 
@@ -17,14 +19,20 @@ def _get_missing_calls():
     url_methods = set()
 
     pages = [
-        "accounts", "contracts", "transactions",
-        "blocks", "logs", "geth-parity-proxy", 
-        "tokens", "gas-tracker", "stats"
-        ]
+        "accounts",
+        "contracts",
+        "transactions",
+        "blocks",
+        "logs",
+        "geth-parity-proxy",
+        "tokens",
+        "gas-tracker",
+        "stats",
+    ]
 
-    for page in  pages:
-        r = requests.get(url + page)
-        soup = BeautifulSoup(r.content)
+    for page in pages:
+        resp = requests.get(url + page)
+        soup = BeautifulSoup(resp.content)
         for div in soup.find_all("div", dir="auto"):
             line = div.text.strip()
             if line and line.startswith("&action="):
@@ -44,7 +52,8 @@ def _get_missing_calls():
 
 
 def save_missing_calls():
-    missing_calls_yaml = os.path.join(dir_abs_path(), "..", "tests", "data", "missing_calls.yaml"
+    missing_calls_yaml = os.path.join(
+        dir_abs_path(), "..", "tests", "data", "missing_calls.yaml"
     )
     with open(missing_calls_yaml, "w+") as file_:
         yaml.dump({"missing_calls": list(_get_missing_calls())}, file_)

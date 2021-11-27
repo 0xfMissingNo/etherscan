@@ -20,9 +20,9 @@ def to_snake_case(name):
         return "timestamp"
     if name == "txreceipt_status":
         return "tx_receipt_status"
-    name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    name = re.sub('__([A-Z])', r'_\1', name)
-    name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', name)
+    name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    name = re.sub("__([A-Z])", r"_\1", name)
+    name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", name)
     return name.lower()
 
 
@@ -50,17 +50,19 @@ def shared(func):
         if func.__name__ not in shared.instances:
             shared.instances[func.__name__] = func(self, *args, **kwargs)
         return shared.instances[func.__name__]
+
     return getinstance
 
 
 def single_excercise(func):
     # pylint: disable=protected-access
     def inner(self, *args, **kwargs):
-        if not hasattr(self, '_instances'):
+        if not hasattr(self, "_instances"):
             setattr(self, "_instances", {})
         if func.__name__ not in self._instances:
             self._instances[func.__name__] = func(self, *args, **kwargs)
         return self._instances[func.__name__]
+
     # pylint: enable=protected-access
     return inner
 
@@ -123,10 +125,12 @@ class BaseClient:
             backend=self._cache_backend,
             expire_after=self._cache_expire_after,
         )
-        session.headers.update({
-            "User-agent": "etherscan - python wrapper "
-            "around etherscan.io (github.com/neoctobers/etherscan)"
-        })
+        session.headers.update(
+            {
+                "User-agent": "etherscan - python wrapper "
+                "around etherscan.io (github.com/neoctobers/etherscan)"
+            }
+        )
         return session
 
     def _req(self):
@@ -147,10 +151,7 @@ class BaseClient:
 
 class Accounts(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "account"
-        }
+        self._params = {"apikey": self._api_key, "module": "account"}
 
     def get_eth_balance(self, address: str):
         """Get ETH balance by address."""
@@ -263,10 +264,7 @@ class Accounts(BaseClient):
 
 class Contracts(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "contract"
-        }
+        self._params = {"apikey": self._api_key, "module": "contract"}
 
     def get_abi(self, address):
         self._params["action"] = "getabi"
@@ -281,10 +279,7 @@ class Contracts(BaseClient):
 
 class Transactions(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "transaction"
-        }
+        self._params = {"apikey": self._api_key, "module": "transaction"}
 
     def get_tx_receipt_status(self, tx_hash):
         self._params["action"] = "gettxreceiptstatus"
@@ -294,10 +289,7 @@ class Transactions(BaseClient):
 
 class Blocks(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "block"
-        }
+        self._params = {"apikey": self._api_key, "module": "block"}
 
     def get_block_countdown(self, block_no):
         self._params["action"] = "getblockcountdown"
@@ -315,10 +307,7 @@ class Blocks(BaseClient):
 
 class Logs(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "logs"
-        }
+        self._params = {"apikey": self._api_key, "module": "logs"}
 
     def get_logs(self, from_block, to_block, address, topic):
         self._params["action"] = "getlogs"
@@ -330,12 +319,8 @@ class Logs(BaseClient):
 
 
 class GethParityProxy(BaseClient):
-
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "proxy"
-        }
+        self._params = {"apikey": self._api_key, "module": "proxy"}
 
     def get_block_number(self):
         """Get latest block number."""
@@ -426,26 +411,17 @@ class GethParityProxy(BaseClient):
 
 class Tokens(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "token"
-        }
+        self._params = {"apikey": self._api_key, "module": "token"}
 
 
 class GasTracker(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "gas"
-        }
+        self._params = {"apikey": self._api_key, "module": "gas"}
 
 
 class Stats(BaseClient):
     def _reset_params(self):
-        self._params = {
-            "apikey": self._api_key,
-            "module": "stats"
-        }
+        self._params = {"apikey": self._api_key, "module": "stats"}
 
     def get_eth_price(self):
         """Get ETH price."""
