@@ -3,6 +3,7 @@ import getpass
 import os
 import re
 import tempfile
+import time
 
 import requests_cache
 from errors import EtherscanIoException
@@ -99,6 +100,7 @@ class BaseClient:
         # session & cache
         self._cache_backend = cache_backend
         self._cache_expire_after = cache_expire_after
+        self._rate_count = None
 
     @property
     @shared
@@ -137,21 +139,34 @@ class BaseClient:
         response = self.session.post(url=self._api_url, data=self._params).json()
 
         self._reset_params()
+        self.rate_limit()
 
         if response["status"] == "0":
             print("--- Etherscan.io Message ---", response["message"])
 
         return response["result"]
 
+    @shared
+    def rate_limit(self):
+        now = time.time()
+        wait = 0.2
+        if not self._rate_count:
+            self._rate_count = now
+            time.sleep(wait)
+            return
+        duration = now - self._rate_count
+        if duration <= wait:
+            time.sleep(duration)
+
     def _reset_params(self):
         self._params = {
-            "apikey": self._api_key,
+            "apikey": self.api_key,
         }
 
 
 class Accounts(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "account"}
+        self._params = {"apikey": self.api_key, "module": "account"}
 
     def get_eth_balance(self, address: str):
         """Get ETH balance by address."""
@@ -177,7 +192,7 @@ class Accounts(BaseClient):
         start_block: int = 0,
         end_block: int = 999999999,
         page: int = 1,
-        limit: int = 1000,
+        limit: int = 10000,
         sort: str = "asc",
     ):  # pylint: disable=too-many-arguments
         """Get transactions by address."""
@@ -203,7 +218,7 @@ class Accounts(BaseClient):
         start_block: int = 0,
         end_block: int = 999999999,
         page: int = 1,
-        limit: int = 1000,
+        limit: int = 10000,
         sort: str = "asc",
     ):  # pylint: disable=too-many-arguments
         """Get transactions by address."""
@@ -230,7 +245,7 @@ class Accounts(BaseClient):
         start_block: int = 0,
         end_block: int = 999999999,
         page: int = 1,
-        limit: int = 1000,
+        limit: int = 10000,
         sort: str = "asc",
     ):  # pylint: disable=too-many-arguments
         """Get ERC20 token transactions by contract address."""
@@ -264,7 +279,7 @@ class Accounts(BaseClient):
 
 class Contracts(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "contract"}
+        self._params = {"apikey": self.api_key, "module": "contract"}
 
     def get_abi(self, address):
         self._params["action"] = "getabi"
@@ -279,7 +294,7 @@ class Contracts(BaseClient):
 
 class Transactions(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "transaction"}
+        self._params = {"apikey": self.api_key, "module": "transaction"}
 
     def get_tx_receipt_status(self, tx_hash):
         self._params["action"] = "gettxreceiptstatus"
@@ -289,25 +304,29 @@ class Transactions(BaseClient):
 
 class Blocks(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "block"}
+        self._params = {"apikey": self.api_key, "module": "block"}
 
     def get_block_countdown(self, block_no):
         self._params["action"] = "getblockcountdown"
         self._params["blockno"] = block_no
         return self._req()
 
-    def get_block_no_by_time(self, timestamp, closest):
+    def get_block_no_by_time(self, timestamp, closest="before"):
         if closest not in ["before", "after"]:
             raise ValueError(f"Something went wrong: {closest}")
         self._params["action"] = "getblocknobytime"
         self._params["timestamp"] = timestamp
         self._params["closest"] = closest
-        return self._req()
+        return int(self._req())
+
+    @property
+    def latest_block(self):
+        return self.get_block_no_by_time(int(time.time()))
 
 
 class Logs(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "logs"}
+        self._params = {"apikey": self.api_key, "module": "logs"}
 
     def get_logs(self, from_block, to_block, address, topic):
         self._params["action"] = "getlogs"
@@ -320,7 +339,7 @@ class Logs(BaseClient):
 
 class GethParityProxy(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "proxy"}
+        self._params = {"apikey": self.api_key, "module": "proxy"}
 
     def get_block_number(self):
         """Get latest block number."""
@@ -411,17 +430,17 @@ class GethParityProxy(BaseClient):
 
 class Tokens(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "token"}
+        self._params = {"apikey": self.api_key, "module": "token"}
 
 
 class GasTracker(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "gas"}
+        self._params = {"apikey": self.api_key, "module": "gas"}
 
 
 class Stats(BaseClient):
     def _reset_params(self):
-        self._params = {"apikey": self._api_key, "module": "stats"}
+        self._params = {"apikey": self.api_key, "module": "stats"}
 
     def get_eth_price(self):
         """Get ETH price."""
@@ -484,3 +503,21 @@ class Client(BaseClient):
     @single_excercise
     def stats(self):
         return Stats()
+
+    def get_transaction_history_by_address(
+        self, address, latest_block=None, tx_list=None, decrement=1000
+    ):
+        if not tx_list:
+            tx_list = []
+        if not latest_block:
+            latest_block = self.blocks.latest_block
+        transactions = self.accounts.get_transactions_by_address(
+            address, end_block=latest_block, start_block=latest_block - decrement
+        )
+        if not transactions:
+            return tx_list
+        tx_list += transactions
+        latest_block -= decrement
+        return self.get_transaction_history_by_address(
+            address, latest_block=latest_block, tx_list=tx_list
+        )
