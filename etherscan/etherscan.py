@@ -531,21 +531,3 @@ class Client(BaseClient):
         end_timestamp -= twenty_four_hours
         end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
         self.get_transaction_history_by_address(address, end=end)
-
-    def get_all_transaction_history_by_address(
-        self, address, latest_block=None, tx_list=None, decrement=1000
-    ):
-        if not tx_list:
-            tx_list = []
-        if not latest_block:
-            latest_block = self.blocks.latest_block
-        transactions = self.accounts.get_transactions_by_address(
-            address, end_block=latest_block, start_block=latest_block - decrement
-        )
-        if not transactions:
-            return tx_list
-        tx_list += transactions
-        latest_block -= decrement
-        return self.get_all_transaction_history_by_address(
-            address, latest_block=latest_block, tx_list=tx_list
-        )
