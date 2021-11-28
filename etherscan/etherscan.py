@@ -447,7 +447,9 @@ class Stats(BaseClient):
 
 
 class Client(BaseClient):
-    tx_list = []
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+        self._start_time = None
 
     @property
     @single_excercise
@@ -495,16 +497,16 @@ class Client(BaseClient):
         return Stats()
 
     def get_transaction_history_by_address(self, address, start=None, end=None):
-    
+
         form = "%m/%d/%Y"
 
         if start:
-            self.start_time = start
+            self._start_time = start
 
-        if not self.start_time:
+        if not self._start_time:
             raise ValueError("Something went wrong")
 
-        start_timestamp = int(dt.timestamp(dt.strptime(self.start_time, form)))
+        start_timestamp = int(dt.timestamp(dt.strptime(self._start_time, form)))
 
         if end:
             end_timestamp = int(dt.timestamp(dt.strptime(end, form)))
@@ -523,10 +525,12 @@ class Client(BaseClient):
             ),
             end_block=self.blocks.get_block_no_by_time(end_timestamp),
         )
+
         yield transactions
+
         end_timestamp -= twenty_four_hours
         end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
-        return self.get_transaction_history_by_address(address, end=end)
+        self.get_transaction_history_by_address(address, end=end)
 
     def get_all_transaction_history_by_address(
         self, address, latest_block=None, tx_list=None, decrement=1000

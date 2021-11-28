@@ -6,10 +6,10 @@ def main():
     client = Client()
     approvals = client.get_transaction_history_by_address(ohm, start="11/25/2021")
     for approval in approvals:
-        for tx in client.accounts.get_transactions_by_address(
+        for transaction in client.accounts.get_transactions_by_address(
             approval["from"],
             start_block=approval["blockNumber"],
             end_block=client.blocks.latest_block,
         ):
-            if tx["to"] == approval["to"]:
-                print(tx)
+            if transaction["to"] == approval["to"]:
+                print(transaction)
