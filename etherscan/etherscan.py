@@ -494,14 +494,9 @@ class Client(BaseClient):
     def stats(self):
         return Stats()
 
-    def get_transaction_history_by_address(
-        self, address, start=None, end=None, tx_list=None
-    ):
-
+    def get_transaction_history_by_address(self, address, start=None, end=None):
+    
         form = "%m/%d/%Y"
-
-        if not tx_list:
-            tx_list = []
 
         if start:
             self.start_time = start
@@ -518,21 +513,20 @@ class Client(BaseClient):
             end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
 
         if start_timestamp > end_timestamp:
-            return tx_list
+            return
 
         twenty_four_hours = 60 * 60 * 24
-        tx_list += self.accounts.get_transactions_by_address(
+        transactions = self.accounts.get_transactions_by_address(
             address,
             start_block=self.blocks.get_block_no_by_time(
                 end_timestamp - twenty_four_hours
             ),
             end_block=self.blocks.get_block_no_by_time(end_timestamp),
         )
+        yield transactions
         end_timestamp -= twenty_four_hours
         end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
-        return self.get_transaction_history_by_address(
-            address, end=end, tx_list=tx_list
-        )
+        return self.get_transaction_history_by_address(address, end=end)
 
     def get_all_transaction_history_by_address(
         self, address, latest_block=None, tx_list=None, decrement=1000
