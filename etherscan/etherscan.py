@@ -4,6 +4,7 @@ import os
 import re
 import tempfile
 import time
+from datetime import datetime as dt
 
 import requests_cache
 from errors import EtherscanIoException
@@ -139,24 +140,11 @@ class BaseClient:
         response = self.session.post(url=self._api_url, data=self._params).json()
 
         self._reset_params()
-        self.rate_limit()
 
         if response["status"] == "0":
             print("--- Etherscan.io Message ---", response["message"])
 
         return response["result"]
-
-    @shared
-    def rate_limit(self):
-        now = time.time()
-        wait = 0.2
-        if not self._rate_count:
-            self._rate_count = now
-            time.sleep(wait)
-            return
-        duration = now - self._rate_count
-        if duration <= wait:
-            time.sleep(duration)
 
     def _reset_params(self):
         self._params = {
@@ -459,6 +447,8 @@ class Stats(BaseClient):
 
 
 class Client(BaseClient):
+    tx_list = []
+
     @property
     @single_excercise
     def accounts(self):
@@ -505,6 +495,46 @@ class Client(BaseClient):
         return Stats()
 
     def get_transaction_history_by_address(
+        self, address, start=None, end=None, tx_list=None
+    ):
+
+        form = "%m/%d/%Y"
+
+        if not tx_list:
+            tx_list = []
+
+        if start:
+            self.start_time = start
+
+        if not self.start_time:
+            raise ValueError("Something went wrong")
+
+        start_timestamp = int(dt.timestamp(dt.strptime(self.start_time, form)))
+
+        if end:
+            end_timestamp = int(dt.timestamp(dt.strptime(end, form)))
+        else:
+            end_timestamp = int(time.time())
+            end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
+
+        if start_timestamp > end_timestamp:
+            return tx_list
+
+        twenty_four_hours = 60 * 60 * 24
+        tx_list += self.accounts.get_transactions_by_address(
+            address,
+            start_block=self.blocks.get_block_no_by_time(
+                end_timestamp - twenty_four_hours
+            ),
+            end_block=self.blocks.get_block_no_by_time(end_timestamp),
+        )
+        end_timestamp -= twenty_four_hours
+        end = dt.strftime(dt.fromtimestamp(end_timestamp), form)
+        return self.get_transaction_history_by_address(
+            address, end=end, tx_list=tx_list
+        )
+
+    def get_all_transaction_history_by_address(
         self, address, latest_block=None, tx_list=None, decrement=1000
     ):
         if not tx_list:
@@ -518,6 +548,6 @@ class Client(BaseClient):
             return tx_list
         tx_list += transactions
         latest_block -= decrement
-        return self.get_transaction_history_by_address(
+        return self.get_all_transaction_history_by_address(
             address, latest_block=latest_block, tx_list=tx_list
         )
